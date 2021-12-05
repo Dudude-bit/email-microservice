@@ -11,7 +11,7 @@ from exceptions import NotImproperlyConfigure
 
 
 async def main():
-    nats_dsn = os.getenv('nats_host')
+    nats_dsn = os.getenv('nats_dsn')
 
     sendgrid_api_key = os.getenv('sendgrid_api_key')
 
@@ -33,20 +33,22 @@ async def main():
 
         body = Mail(
             from_email=data['from-email'],
-            to_emails=[data['to']],
+            to_emails=[data['to-email']],
             subject=data['email-subject'],
-            html_content=data['payload']
+            html_content=data['email-payload']
         )
 
         try:
             response = sendgrid_client.send(body)
         except Exception:
-            await msg.nak()
-        else:
-            await msg.ack()
+            pass
 
-    sub = await nc.subscribe('send-email-topic', cb=message_handler)
+    sub = await nc.subscribe('send-email-topic')
+
+    async for message in sub.messages:
+        await message_handler(message)
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(asyncio.gather(main()))
